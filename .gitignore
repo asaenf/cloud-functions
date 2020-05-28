@@ -1,0 +1,11 @@
+*.pyc
+.coverage
+.tox
+.pytest_cache
+coverage.xml
+__pycache__
+lib
+.DS_store
+.idea
+venv/
+cloud-functions.iml
