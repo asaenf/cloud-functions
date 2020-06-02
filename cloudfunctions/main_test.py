@@ -132,3 +132,33 @@ def test_post_not_existing(get_database_client, app):
                                   ):
         res = main.post(flask.request)
         assert res.status_code == 404
+
+
+@mock.patch('main.get_database_client')
+def test_delete_existing(get_database_client, app):
+    mock_db = MockFirestore()
+    get_database_client.return_value = mock_db
+
+    mock_db.collection('items').document('item1').set({'quantity': 1})
+    with app.test_request_context(json={"item": "item1"},
+                                  content_type="application/json",
+                                  method='DELETE'
+                                  ):
+        res = main.delete(flask.request)
+        assert res.status_code == 200
+        doc = mock_db.collection('items').document('item1').get()
+        assert doc.to_dict() == {}
+
+
+@mock.patch('main.get_database_client')
+def test_delete_not_existing(get_database_client, app):
+    mock_db = MockFirestore()
+    get_database_client.return_value = mock_db
+
+    with app.test_request_context(json={"item": "item1"},
+                                  content_type="application/json",
+                                  method='DELETE'
+                                  ):
+        res = main.delete(flask.request)
+        print("%s" % str(res))
+        assert res.status_code == 200

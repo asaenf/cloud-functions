@@ -3,15 +3,25 @@ from google.cloud import firestore
 
 
 def _get_item_quantity(request):
+    item = _get_item(request)
+    request_json = request.get_json(silent=True)
+    # we already know content type is json
+    if 'quantity' in request_json:
+        quantity = request_json['quantity']
+        return item, quantity
+    else:
+        raise ValueError("JSON is invalid, or missing property quantity")
+
+
+def _get_item(request):
     content_type = request.headers['content-type']
     if content_type == 'application/json':
         request_json = request.get_json(silent=True)
-        if request_json and 'item' in request_json and 'quantity' in request_json:
+        if request_json and 'item' in request_json:
             item = request_json['item']
-            quantity = request_json['quantity']
-            return item, quantity
+            return item
         else:
-            raise ValueError("JSON is invalid, or missing property item or quantity")
+            raise ValueError("JSON is invalid, or missing property item")
     else:
         raise ValueError("Content type not allowed: {}".format(content_type))
 
@@ -107,6 +117,31 @@ def post(request):
                 return make_response(
                     jsonify(doc.to_dict()), 200)
             except Exception as not_found:
+                return make_response("Error {}".format(not_found), 404)
+        except ValueError as e:
+            print("Error %s" % e)
+            return make_response("Error {}".format(e), 400)
+    else:
+        return make_response("Request type not allowed", 400)
+
+
+def delete(request):
+    """ Method that handles all requests to delete items
+    from the database"""
+
+    db = get_database_client()
+    coll_ref = db.collection('items')
+
+    if request.method == 'DELETE':
+        print("DELETE request received")
+        try:
+            item = _get_item(request)
+            print("Deleting item %s" % item)
+            try:
+                coll_ref.document(item).delete()
+                return make_response("OK", 200)
+            except Exception as not_found:
+                print("Error %s" % not_found)
                 return make_response("Error {}".format(not_found), 404)
         except ValueError as e:
             print("Error %s" % e)
