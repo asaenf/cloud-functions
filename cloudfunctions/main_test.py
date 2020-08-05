@@ -18,10 +18,13 @@ def test_get(get_database_client, app):
     mock_db.collection('items').document('test').set({'quantity': 1})
 
     expected = {'quantity': 1}
-    with app.test_request_context(query_string={'item': 'test'}):
+    with app.test_request_context(query_string={'item': 'test'},
+                                  headers={'Origin': 'https://inventoryapp-276220.web.app/'}):
         res = main.get(flask.request)
         assert res.status_code == 200
         assert expected == res.get_json()
+        assert 'https://inventoryapp-276220.web.app' == res.headers['Access-Control-Allow-Origin']
+        assert 'true' == res.headers['Access-Control-Allow-Credentials']
 
 
 @mock.patch('main.get_database_client')
@@ -32,10 +35,12 @@ def test_get_all(get_database_client, app):
     mock_db.collection('items').document('test2').set({'quantity': 2})
 
     expected = [{"test": {'quantity': 1}}, {"test2": {'quantity': 2}}]
-    with app.test_request_context():
+    with app.test_request_context(headers={'Origin': 'https://inventoryapp-276220.web.app'}):
         res = main.get(flask.request)
         assert res.status_code == 200
         assert expected == res.get_json()
+        assert 'https://inventoryapp-276220.web.app' == res.headers['Access-Control-Allow-Origin']
+        assert 'true' == res.headers['Access-Control-Allow-Credentials']
 
 
 @mock.patch('main.get_database_client')
@@ -43,7 +48,8 @@ def test_get_not_found(get_database_client, app):
     mock_db = MockFirestore()
     get_database_client.return_value = mock_db
 
-    with app.test_request_context(query_string={'item': 'test'}):
+    with app.test_request_context(query_string={'item': 'test'},
+                                  headers={'Origin': 'https://inventoryapp-276220.web.app'}):
         res = main.get(flask.request)
         assert res.status_code == 404
 
@@ -54,7 +60,8 @@ def test_incorrect_content_type(get_database_client, app):
     get_database_client.return_value = mock_db
 
     with app.test_request_context(json={'item': 'test'},
-                                  content_type='application/x-www-form-urlencoded'):
+                                  content_type='application/x-www-form-urlencoded',
+                                  headers={'Origin': 'https://inventoryapp-276220.web.app'}):
         res = main.post(flask.request)
         assert res.status_code == 400
 
@@ -67,7 +74,8 @@ def test_put_creates_if_doesnt_exist(get_database_client, app):
     expected = {'quantity': 1}
     with app.test_request_context(json={"item": "item1", "quantity": 1},
                                   content_type="application/json",
-                                  method='PUT'
+                                  method='PUT',
+                                  headers={'Origin': 'https://inventoryapp-276220.web.app'}
                                   ):
         res = main.put(flask.request)
         assert res.status_code == 201
@@ -84,7 +92,8 @@ def test_put_if_already_exist(get_database_client, app):
     mock_db.collection('items').document('item1').set({'quantity': 1})
     with app.test_request_context(json={"item": "item1", "quantity": 1},
                                   content_type="application/json",
-                                  method='PUT'
+                                  method='PUT',
+                                  headers={'Origin': 'https://inventoryapp-276220.web.app'}
                                   ):
         res = main.put(flask.request)
         assert res.status_code == 409
@@ -98,7 +107,8 @@ def test_incorrect_payload(get_database_client, app):
     # missing quantity
     with app.test_request_context(json={"item": "item1"},
                                   content_type="application/json",
-                                  method='PUT'):
+                                  method='PUT',
+                                  headers={'Origin': 'https://inventoryapp-276220.web.app'}):
         res = main.put(flask.request)
         assert res.status_code == 400
 
@@ -112,13 +122,16 @@ def test_post_updates(get_database_client, app):
     expected = {'quantity': 4}
     with app.test_request_context(json={"item": "item1", "quantity": 4},
                                   content_type="application/json",
-                                  method='POST'
+                                  method='POST',
+                                  headers={'Origin': 'https://inventoryapp-276220.web.app'}
                                   ):
         res = main.post(flask.request)
         assert res.status_code == 200
         assert expected == res.get_json()
         doc = mock_db.collection('items').document('item1').get()
         assert doc.to_dict() == expected
+        assert 'https://inventoryapp-276220.web.app' == res.headers['Access-Control-Allow-Origin']
+        assert 'true' == res.headers['Access-Control-Allow-Credentials']
 
 
 @mock.patch('main.get_database_client')
@@ -128,7 +141,8 @@ def test_post_not_existing(get_database_client, app):
 
     with app.test_request_context(json={"item": "item1", "quantity": 4},
                                   content_type="application/json",
-                                  method='POST'
+                                  method='POST',
+                                  headers={'Origin': 'https://inventoryapp-276220.web.app'}
                                   ):
         res = main.post(flask.request)
         assert res.status_code == 404
@@ -142,12 +156,15 @@ def test_delete_existing(get_database_client, app):
     mock_db.collection('items').document('item1').set({'quantity': 1})
     with app.test_request_context(json={"item": "item1"},
                                   content_type="application/json",
-                                  method='DELETE'
+                                  method='DELETE',
+                                  headers={'Origin': 'https://inventoryapp-276220.web.app'}
                                   ):
         res = main.delete(flask.request)
         assert res.status_code == 200
         doc = mock_db.collection('items').document('item1').get()
         assert doc.to_dict() == {}
+        assert 'https://inventoryapp-276220.web.app' == res.headers['Access-Control-Allow-Origin']
+        assert 'true' == res.headers['Access-Control-Allow-Credentials']
 
 
 @mock.patch('main.get_database_client')
@@ -157,8 +174,11 @@ def test_delete_not_existing(get_database_client, app):
 
     with app.test_request_context(json={"item": "item1"},
                                   content_type="application/json",
-                                  method='DELETE'
+                                  method='DELETE',
+                                  headers={'Origin': 'https://inventoryapp-276220.web.app'}
                                   ):
         res = main.delete(flask.request)
         print("%s" % str(res))
         assert res.status_code == 200
+        assert 'https://inventoryapp-276220.web.app' == res.headers['Access-Control-Allow-Origin']
+        assert 'true' == res.headers['Access-Control-Allow-Credentials']
